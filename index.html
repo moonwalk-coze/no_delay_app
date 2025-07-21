@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>不再拖延助手 ✨</title>
+  <style>
+    body {
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 40px 20px;
+      background-color: #f8fafc;
+      text-align: center;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      padding: 12px 18px;
+      font-size: 16px;
+      margin: 10px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      outline: none;
+    }
+
+    input {
+      width: 260px;
+    }
+
+    button {
+      background-color: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    .step-box {
+      background: white;
+      margin-top: 30px;
+      padding: 25px;
+      border-radius: 18px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      max-width: 360px;
+      font-size: 20px;
+      color: #0f172a;
+      cursor: pointer;
+    }
+
+    .step-box:hover {
+      background-color: #e0f2fe;
+    }
+
+    .progress-container {
+      width: 100%;
+      max-width: 360px;
+      height: 10px;
+      background-color: #e2e8f0;
+      border-radius: 8px;
+      margin-top: 16px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #3b82f6;
+      transition: width 0.3s ease;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #history {
+      margin-top: 40px;
+      max-width: 380px;
+      text-align: left;
+    }
+
+    .history-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #64748b;
+    }
+
+    .history-item {
+      background: #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .history-item:hover {
+      background-color: #cbd5e1;
+    }
+
+    #clearHistoryBtn {
+      margin-top: 10px;
+      background-color: #ef4444;
+    }
+
+    #clearHistoryBtn:hover {
+      background-color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <h1>不再拖延助手 ✨</h1>
+
+  <div id="input-area" class="section">
+    <input id="taskInput" type="text" placeholder="我想做什么...">
+    <button onclick="startTask()">开始拆解！</button>
+  </div>
+
+  <div id="step-area" class="section hidden">
+    <div class="step-box" id="stepText" onclick="nextStep()">正在生成步骤，请稍等...</div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <div id="finished-area" class="section hidden">
+    <h2>🎉 你完成啦！太棒了！</h2>
+    <button onclick="restart()">再来一个任务</button>
+  </div>
+
+  <div id="history" class="section">
+    <div class="history-title">🕘 历史任务</div>
+    <div id="historyList"></div>
+    <button id="clearHistoryBtn" onclick="clearHistory()">🗑 清空历史</button>
+  </div>
+
+  <script>
+    let steps = [];
+    let currentStep = 0;
+
+    function saveToHistory(taskName) {
+      const history = JSON.parse(localStorage.getItem("taskHistory") || "[]");
+      if (!history.includes(taskName)) {
+        history.unshift(taskName);
+        localStorage.setItem("taskHistory", JSON.stringify(history.slice(0, 10)));
+      }
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem("taskHistory") || "[]");
+      const container = document.getElementById("historyList");
+      container.innerHTML = "";
+
+      history.forEach(task => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.textContent = task;
+        div.onclick = () => startTask(task);
+        container.appendChild(div);
+      });
+    }
+
+    function clearHistory() {
+      localStorage.removeItem("taskHistory");
+      renderHistory();
+    }
+
+    function updateProgress() {
+      const percent = ((currentStep + 1) / steps.length) * 100;
+      document.getElementById("progressBar").style.width = percent + "%";
+    }
+
+    async function startTask(taskFromHistory = null) {
+      const taskName = taskFromHistory || document.getElementById("taskInput").value.trim();
+      if (!taskName) {
+        alert("请输入一个任务！");
+        return;
+      }
+
+      saveToHistory(taskName);
+      document.getElementById("input-area").classList.add("hidden");
+      document.getElementById("step-area").classList.remove("hidden");
+      document.getElementById("finished-area").classList.add("hidden");
+      document.getElementById("stepText").textContent = "正在生成步骤，请稍等...";
+
+      steps = await getStepsFromGLM(taskName);
+
+      if (steps.length === 0) {
+        document.getElementById("stepText").textContent = "生成失败，请检查网络或API Key";
+        return;
+      }
+
+      currentStep = 0;
+      document.getElementById("stepText").textContent = steps[currentStep];
+      updateProgress();
+    }
+
+    function nextStep() {
+      currentStep++;
+      if (currentStep >= steps.length) {
+        document.getElementById("input-area").classList.add("hidden");
+        document.getElementById("step-area").classList.add("hidden");
+        document.getElementById("finished-area").classList.remove("hidden");
+      } else {
+        document.getElementById("stepText").textContent = steps[currentStep];
+        updateProgress();
+      }
+    }
+
+    function restart() {
+      document.getElementById("taskInput").value = "";
+      document.getElementById("input-area").classList.remove("hidden");
+      document.getElementById("step-area").classList.add("hidden");
+      document.getElementById("finished-area").classList.add("hidden");
+    }
+
+    async function getStepsFromGLM(taskText) {
+      const apiKey = "ea0427e7f6394170ad041e3106831b7f.ss8SaxqHj7h3Gk2J";
+      const url = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+
+      const prompt = `我想完成一件事：“${taskText}”。
+
+请你将这个目标拆解成 7～10 个具体的小步骤，每个步骤必须是立刻就可以执行的动作，1～3 秒内完成，避免使用抽象词汇如思考、规划、准备等。
+
+返回格式如下：
+1. xxx
+2. xxx`;
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "glm-4",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.5
+          })
+        });
+
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || "";
+        const lines = text.split('\n').filter(line => line.match(/^\d+\./));
+        return lines.map(line => line.replace(/^\d+\.\s*/, '').trim());
+      } catch (err) {
+        console.error("AI调用失败：", err);
+        return [];
+      }
+    }
+
+    renderHistory();
+  </script>
+</body>
+</html>
