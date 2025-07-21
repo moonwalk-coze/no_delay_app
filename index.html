@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -25,6 +26,11 @@
       border-radius: 12px;
       border: 1px solid #cbd5e1;
       outline: none;
+      transition: transform 0.1s ease;
+    }
+
+    button:active {
+      transform: scale(0.95);
     }
 
     input {
@@ -51,10 +57,16 @@
       font-size: 20px;
       color: #0f172a;
       cursor: pointer;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeInStep 0.4s forwards ease-out;
     }
 
-    .step-box:hover {
-      background-color: #e0f2fe;
+    @keyframes fadeInStep {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .progress-container {
@@ -71,7 +83,7 @@
       height: 100%;
       width: 0%;
       background-color: #3b82f6;
-      transition: width 0.3s ease;
+      transition: width 0.4s ease-in-out;
     }
 
     .hidden {
@@ -111,11 +123,12 @@
 
     #clearHistoryBtn {
       margin-top: 10px;
-      background-color: #ef4444;
+      background-color: #cbd5e1;
+      color: #0f172a;
     }
 
     #clearHistoryBtn:hover {
-      background-color: #dc2626;
+      background-color: #94a3b8;
     }
   </style>
 </head>
@@ -142,7 +155,7 @@
   <div id="history" class="section">
     <div class="history-title">🕘 历史任务</div>
     <div id="historyList"></div>
-    <button id="clearHistoryBtn" onclick="clearHistory()">🗑 清空历史</button>
+    <button id="clearHistoryBtn" onclick="clearHistory()">🧹 清空历史</button>
   </div>
 
   <script>
@@ -193,7 +206,6 @@
       document.getElementById("input-area").classList.add("hidden");
       document.getElementById("step-area").classList.remove("hidden");
       document.getElementById("finished-area").classList.add("hidden");
-      document.getElementById("stepText").textContent = "正在生成步骤，请稍等...";
 
       steps = await getStepsFromGLM(taskName);
 
@@ -203,7 +215,7 @@
       }
 
       currentStep = 0;
-      document.getElementById("stepText").textContent = steps[currentStep];
+      setStepAnimatedText(steps[currentStep]);
       updateProgress();
     }
 
@@ -214,9 +226,17 @@
         document.getElementById("step-area").classList.add("hidden");
         document.getElementById("finished-area").classList.remove("hidden");
       } else {
-        document.getElementById("stepText").textContent = steps[currentStep];
+        setStepAnimatedText(steps[currentStep]);
         updateProgress();
       }
+    }
+
+    function setStepAnimatedText(text) {
+      const el = document.getElementById("stepText");
+      el.classList.remove("step-box");
+      void el.offsetWidth;
+      el.textContent = text;
+      el.classList.add("step-box");
     }
 
     function restart() {
@@ -227,23 +247,16 @@
     }
 
     async function getStepsFromGLM(taskText) {
-      const apiKey = "ea0427e7f6394170ad041e3106831b7f.ss8SaxqHj7h3Gk2J";
+      const apiKey = "your-api-key";
       const url = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-
-      const prompt = `我想完成一件事：“${taskText}”。
-
-请你将这个目标拆解成 7～10 个具体的小步骤，每个步骤必须是立刻就可以执行的动作，1～3 秒内完成，避免使用抽象词汇如思考、规划、准备等。
-
-返回格式如下：
-1. xxx
-2. xxx`;
+      const prompt = `我想完成一件事：“${taskText}”。\n\n请你将这个目标拆解成 7～10 个具体的小步骤，每个步骤必须是立刻就可以执行的动作，1～3 秒内完成，避免使用抽象词汇如思考、规划、准备等。\n\n返回格式如下：\n1. xxx\n2. xxx`;
 
       try {
         const res = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`
+            "Authorization": \`Bearer \${apiKey}\`
           },
           body: JSON.stringify({
             model: "glm-4",
