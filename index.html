@@ -59,7 +59,14 @@
       opacity: 0;
       transform: translateY(10px);
       animation: fadeInStep 0.4s forwards ease-out;
+      
     }
+    html, body {
+      border-radius: 48px; /* 让内部页面圆起来，和 iframe 容器对齐 */
+      overflow: hidden;
+      background-color: #f8fafc; /* 你原本的底色，别用透明 */
+}
+
 
     @keyframes fadeInStep {
       to {
@@ -218,11 +225,14 @@ async function startTask(taskFromHistory = null) {
   steps = await getStepsFromGLM(taskName);
 
   if (steps.length === 0) {
-    document.getElementById("stepText").textContent = "生成失败，请检查网络或API Key";
-    isLoading = false;
-    return;
-  }
-
+  alert("生成失败，请检查网络或API Key");
+  // 恢复初始界面
+  document.getElementById("input-area").classList.remove("hidden");
+  document.getElementById("step-area").classList.add("hidden");
+  document.getElementById("finished-area").classList.add("hidden");
+  document.getElementById("progressBar").style.width = "0%";
+  return;
+}
   currentStep = 0;
   setStepAnimatedText(steps[currentStep]);
   updateProgress();
@@ -271,10 +281,15 @@ async function startTask(taskFromHistory = null) {
     const data = await res.json();
     return data.steps || [];
   } catch (err) {
-    console.error("AI调用失败：", err);
-    return [];
-  }
+  console.error("AI调用失败：", err);
+  alert("出错啦！可能是网络或API服务暂时不可用");
+  document.getElementById("input-area").classList.remove("hidden");
+  document.getElementById("step-area").classList.add("hidden");
+  document.getElementById("finished-area").classList.add("hidden");
+  document.getElementById("progressBar").style.width = "0%";
+  return [];
 }
+  }
   // 页面加载时渲染历史任务
   renderHistory();
 </script>
