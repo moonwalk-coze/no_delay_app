@@ -10,12 +10,6 @@
       "use": "@vercel/node"
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/ask-gpt",
-      "destination": "/api/ask-gpt.js"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
